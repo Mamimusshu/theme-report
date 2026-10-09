@@ -1,0 +1,274 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>テーマ監視ワークフロー</title>
+<style>
+:root{--page:#f9f9f7;--card:#ffffff;--ink:#0b0b0b;--ink2:#52514e;--muted:#898781;--line:#e1e0d9;
+  --accent:#2a78d6;--good:#0ca30c;--warning:#d99a00;--serious:#ec835a;--critical:#d03b3b}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --page:#0d0d0d;--card:#1a1a19;--ink:#ffffff;--ink2:#c3c2b7;--muted:#898781;--line:#2c2c2a;--accent:#3987e5;--warning:#fab219}}
+:root[data-theme="dark"]{--page:#0d0d0d;--card:#1a1a19;--ink:#ffffff;--ink2:#c3c2b7;--muted:#898781;--line:#2c2c2a;--accent:#3987e5;--warning:#fab219}
+*{box-sizing:border-box}
+body{margin:0;background:var(--page);color:var(--ink);
+  font:15px/1.65 -apple-system,"Hiragino Sans","Hiragino Kaku Gothic ProN",system-ui,sans-serif}
+.wrap{max-width:720px;margin:0 auto;padding:24px 16px 56px}
+.eyebrow{font-size:12px;font-weight:600;letter-spacing:.08em;color:var(--muted)}
+h1{font-size:26px;line-height:1.3;margin:4px 0 8px}
+.lead{color:var(--ink2);font-size:14px;margin:0}
+h2{font-size:18px;margin:36px 0 4px}
+.sub{font-size:13px;color:var(--muted);margin:0 0 12px}
+figure{margin:0;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px}
+figure svg{display:block;width:100%;height:auto;max-width:560px;margin:0 auto;color:var(--ink)}
+figcaption{font-size:13px;color:var(--ink2);margin-top:12px;line-height:1.6}
+svg text{font-family:inherit}
+.box{fill:var(--card);stroke:currentColor;stroke-opacity:.35}
+.box-strong{fill:var(--card);stroke:var(--accent);stroke-width:1.5}
+.box-store{fill:none;stroke:currentColor;stroke-opacity:.35;stroke-dasharray:4 3}
+.sub-box{fill:var(--page);stroke:currentColor;stroke-opacity:.18}
+.t{fill:currentColor;font-size:13px;font-weight:700}
+.s{fill:currentColor;font-size:11.5px}
+.m{fill:var(--muted);font-size:11px}
+.lbl{fill:var(--ink2);font-size:11px}
+.arrow{stroke:currentColor;stroke-opacity:.55;stroke-width:1.5;fill:none}
+.arrow-store{stroke:currentColor;stroke-opacity:.4;stroke-width:1.2;stroke-dasharray:3 3;fill:none}
+table{border-collapse:collapse;width:100%;font-size:13px;background:var(--card);border:1px solid var(--line);border-radius:14px;overflow:hidden}
+th,td{text-align:left;padding:9px 12px;border-bottom:1px solid var(--line);vertical-align:top}
+th{font-size:12px;color:var(--muted);font-weight:600;background:var(--page)}
+tr:last-child td{border-bottom:0}
+td:first-child{white-space:nowrap}
+td code{word-break:break-all}
+code{font-size:12px;background:var(--line);padding:1px 6px;border-radius:4px}
+</style>
+</head>
+<body><div class="wrap">
+
+<div class="eyebrow">STOCK THEME MONITOR</div>
+<h1>テーマ監視のワークフロー</h1>
+<p class="lead">平日朝7:20にクラウド（GitHub Actions）で自動起動し、約6分で「新テーマの発見 → テーマごとの計測 → 判定 → レポートと通知」までを行います。</p>
+
+<!-- ============ 図1 全体の流れ ============ -->
+<h2>1. 全体の流れ</h2>
+<p class="sub">左が処理の順番、右の点線が過去の記録（比較の基準に使う）</p>
+<figure>
+<svg viewBox="0 0 420 560" role="img" aria-label="自動起動から新テーマ発見、テーマごとの計測、判定、レポートと通知までの処理の流れ。各段階が記録データベースと過去値をやり取りする。">
+  <defs>
+    <marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="currentColor" fill-opacity=".6"/>
+    </marker>
+  </defs>
+
+  <!-- 起動 -->
+  <rect x="60" y="12" width="200" height="32" rx="16" class="box-strong"/>
+  <text x="160" y="33" text-anchor="middle" class="t">平日 7:20 クラウドで起動</text>
+  <line x1="160" y1="44" x2="160" y2="67" class="arrow" marker-end="url(#ah)"/>
+
+  <!-- ① 新テーマ発見 -->
+  <rect x="20" y="70" width="280" height="92" rx="10" class="box"/>
+  <text x="34" y="94" class="t">① 新テーマを探す</text>
+  <text x="288" y="94" text-anchor="end" class="m">discover.py</text>
+  <text x="34" y="116" class="s">・東証全銘柄の急騰 ＋ その銘柄のニュース</text>
+  <text x="34" y="134" class="s">・見出しの「〇〇関連株」の急増</text>
+  <text x="34" y="152" class="s">・Googleトレンドの急上昇ワード</text>
+  <line x1="160" y1="162" x2="160" y2="193" class="arrow" marker-end="url(#ah)"/>
+  <text x="168" y="182" class="lbl">暫定テーマ・銘柄を追加</text>
+
+  <!-- 監視テーマ -->
+  <rect x="20" y="196" width="280" height="44" rx="10" class="box"/>
+  <text x="160" y="223" text-anchor="middle" class="t">監視テーマ ＝ 固定 ＋ 自動追加</text>
+  <line x1="160" y1="240" x2="160" y2="261" class="arrow" marker-end="url(#ah)"/>
+
+  <!-- ② 計測 -->
+  <rect x="20" y="264" width="280" height="118" rx="10" class="box"/>
+  <text x="34" y="287" class="t">② テーマごとに測る</text>
+  <text x="288" y="287" text-anchor="end" class="m">monitor.py</text>
+  <rect x="34" y="298" width="80" height="72" rx="8" class="sub-box"/>
+  <rect x="120" y="298" width="80" height="72" rx="8" class="sub-box"/>
+  <rect x="206" y="298" width="80" height="72" rx="8" class="sub-box"/>
+  <text x="74" y="318" text-anchor="middle" class="t" style="font-size:12px">価格</text>
+  <text x="74" y="338" text-anchor="middle" class="s">出来高急増</text>
+  <text x="74" y="356" text-anchor="middle" class="s">騰落・乖離</text>
+  <text x="160" y="318" text-anchor="middle" class="t" style="font-size:12px">ニュース</text>
+  <text x="160" y="338" text-anchor="middle" class="s">24h件数</text>
+  <text x="160" y="356" text-anchor="middle" class="s">平常比</text>
+  <text x="246" y="318" text-anchor="middle" class="t" style="font-size:12px">個人の温度感</text>
+  <text x="246" y="338" text-anchor="middle" class="s">検索の関心</text>
+  <text x="246" y="356" text-anchor="middle" class="s">掲示板投稿</text>
+  <line x1="160" y1="382" x2="160" y2="403" class="arrow" marker-end="url(#ah)"/>
+
+  <!-- ③ 判定 -->
+  <rect x="20" y="406" width="280" height="58" rx="10" class="box"/>
+  <text x="34" y="429" class="t">③ 判定</text>
+  <text x="34" y="450" class="s">シグナル ＋ 局面（初動→拡散→過熱→失速）</text>
+  <line x1="88" y1="464" x2="88" y2="487" class="arrow" marker-end="url(#ah)"/>
+  <line x1="232" y1="464" x2="232" y2="487" class="arrow" marker-end="url(#ah)"/>
+
+  <!-- ④ 出力 -->
+  <rect x="20" y="490" width="136" height="58" rx="10" class="box-strong"/>
+  <text x="88" y="513" text-anchor="middle" class="t">レポート</text>
+  <text x="88" y="533" text-anchor="middle" class="s">Webページ</text>
+  <rect x="164" y="490" width="136" height="58" rx="10" class="box-strong"/>
+  <text x="232" y="513" text-anchor="middle" class="t">スマホ通知</text>
+  <text x="232" y="533" text-anchor="middle" class="s">Pushover</text>
+
+  <!-- 記録 -->
+  <rect x="322" y="70" width="88" height="394" rx="10" class="box-store"/>
+  <text x="366" y="92" text-anchor="middle" class="t">記録</text>
+  <text x="366" y="108" text-anchor="middle" class="m">SQLite</text>
+  <line x1="300" y1="122" x2="321" y2="122" class="arrow-store" marker-start="url(#ah)" marker-end="url(#ah)"/>
+  <text x="366" y="126" text-anchor="middle" class="lbl">語句の件数</text>
+  <line x1="300" y1="330" x2="321" y2="330" class="arrow-store" marker-start="url(#ah)" marker-end="url(#ah)"/>
+  <text x="366" y="318" text-anchor="middle" class="lbl">記事数</text>
+  <text x="366" y="334" text-anchor="middle" class="lbl">投稿数</text>
+  <text x="366" y="350" text-anchor="middle" class="lbl">→ 平常値</text>
+  <line x1="300" y1="435" x2="321" y2="435" class="arrow-store" marker-start="url(#ah)" marker-end="url(#ah)"/>
+  <text x="366" y="431" text-anchor="middle" class="lbl">前回の判定</text>
+  <text x="366" y="447" text-anchor="middle" class="lbl">→ 変化検知</text>
+</svg>
+<figcaption>
+毎回の結果を記録に残し、次回以降の「平常時の水準」として使います（ニュースは過去30日の中央値、掲示板は日々の投稿数の中央値）。
+通知は、朝は全テーマの要約、それ以外の実行では前回から局面やシグナルが変わったテーマだけを送ります。
+</figcaption>
+</figure>
+
+<!-- ============ 図2 局面判定 ============ -->
+<h2>2. 局面の判定順</h2>
+<p class="sub">上から順に調べ、最初に当てはまった局面になる（毎朝ゼロから判定）</p>
+<figure>
+<svg viewBox="0 0 420 340" role="img" aria-label="局面判定の順番。失速、過熱、拡散、初動の条件を上から順に調べ、どれにも当てはまらなければ平常。">
+  <defs>
+    <marker id="ah2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+      <path d="M0,0 L10,5 L0,10 z" fill="currentColor" fill-opacity=".6"/>
+    </marker>
+  </defs>
+
+  <!-- 1 失速 -->
+  <rect x="20" y="12" width="270" height="52" rx="10" class="box"/>
+  <text x="34" y="34" class="s">TOPIX比 +10%超 上昇した後に</text>
+  <text x="34" y="53" class="s">5日で−5%以下、または25日線割れ</text>
+  <line x1="290" y1="38" x2="326" y2="38" class="arrow" marker-end="url(#ah2)"/>
+  <text x="308" y="32" text-anchor="middle" class="lbl">はい</text>
+  <rect x="328" y="23" width="76" height="30" rx="15" fill="var(--critical)" fill-opacity=".16" stroke="var(--critical)"/>
+  <text x="366" y="43" text-anchor="middle" class="t">▼ 失速</text>
+  <line x1="60" y1="64" x2="60" y2="80" class="arrow" marker-end="url(#ah2)"/>
+  <text x="68" y="76" class="lbl">いいえ</text>
+
+  <!-- 2 過熱 -->
+  <rect x="20" y="82" width="270" height="52" rx="10" class="box"/>
+  <text x="34" y="104" class="s">TOPIX比 +10%超 で、次のいずれか</text>
+  <text x="34" y="123" class="s" style="font-size:11px">乖離20%超／RSI75超／出来高・検索の山越え</text>
+  <line x1="290" y1="108" x2="326" y2="108" class="arrow" marker-end="url(#ah2)"/>
+  <text x="308" y="102" text-anchor="middle" class="lbl">はい</text>
+  <rect x="328" y="93" width="76" height="30" rx="15" fill="var(--serious)" fill-opacity=".18" stroke="var(--serious)"/>
+  <text x="366" y="113" text-anchor="middle" class="t">✸ 過熱</text>
+  <line x1="60" y1="134" x2="60" y2="150" class="arrow" marker-end="url(#ah2)"/>
+  <text x="68" y="146" class="lbl">いいえ</text>
+
+  <!-- 3 拡散 -->
+  <rect x="20" y="152" width="270" height="52" rx="10" class="box"/>
+  <text x="34" y="174" class="s">TOPIX比 +8%超 で</text>
+  <text x="34" y="193" class="s">小型株が主力株を5日で3%超上回る</text>
+  <line x1="290" y1="178" x2="326" y2="178" class="arrow" marker-end="url(#ah2)"/>
+  <text x="308" y="172" text-anchor="middle" class="lbl">はい</text>
+  <rect x="328" y="163" width="76" height="30" rx="15" fill="var(--warning)" fill-opacity=".2" stroke="var(--warning)"/>
+  <text x="366" y="183" text-anchor="middle" class="t">◆ 拡散</text>
+  <line x1="60" y1="204" x2="60" y2="220" class="arrow" marker-end="url(#ah2)"/>
+  <text x="68" y="216" class="lbl">いいえ</text>
+
+  <!-- 4 初動 -->
+  <rect x="20" y="222" width="270" height="52" rx="10" class="box"/>
+  <text x="34" y="244" class="s">TOPIX比 +5%超、または</text>
+  <text x="34" y="263" class="s">5日+5% かつ 出来高急増が4割以上</text>
+  <line x1="290" y1="248" x2="326" y2="248" class="arrow" marker-end="url(#ah2)"/>
+  <text x="308" y="242" text-anchor="middle" class="lbl">はい</text>
+  <rect x="328" y="233" width="76" height="30" rx="15" fill="var(--good)" fill-opacity=".16" stroke="var(--good)"/>
+  <text x="366" y="253" text-anchor="middle" class="t">▲ 初動</text>
+  <line x1="60" y1="274" x2="60" y2="290" class="arrow" marker-end="url(#ah2)"/>
+  <text x="68" y="286" class="lbl">いいえ</text>
+
+  <!-- 5 平常 -->
+  <rect x="20" y="292" width="270" height="36" rx="10" class="box"/>
+  <text x="34" y="315" class="s">どれにも当てはまらない</text>
+  <line x1="290" y1="310" x2="326" y2="310" class="arrow" marker-end="url(#ah2)"/>
+  <rect x="328" y="295" width="76" height="30" rx="15" fill="none" stroke="currentColor" stroke-opacity=".35"/>
+  <text x="366" y="315" text-anchor="middle" class="t">– 平常</text>
+</svg>
+<figcaption>
+「TOPIX比」はテーマ銘柄の20日騰落率の平均とTOPIXとの差です。局面とは別に、<b>シグナル</b>も判定します。
+価格シグナル（銘柄の4割以上が「出来高2倍以上かつ上昇」）とニュースシグナル（24時間の記事数が平常の3倍以上かつ5件以上）の
+両方がそろえば「テーマ発生」、片方なら「監視中」です。
+</figcaption>
+</figure>
+
+<!-- ============ 図3 新テーマのライフサイクル ============ -->
+<h2>3. 新テーマの扱い</h2>
+<p class="sub">自動で増やし、自動で減らす。残したいものだけ手動で常設にする</p>
+<figure>
+<svg viewBox="0 0 420 262" role="img" aria-label="新テーマ候補が条件を満たすと14日間の暫定テーマになり、adoptで常設テーマ、期限切れで監視から外れる。既存テーマの語を含む急騰銘柄は既存テーマに追加される。">
+  <defs>
+    <marker id="ah3" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+      <path d="M0,0 L10,5 L0,10 z" fill="currentColor" fill-opacity=".6"/>
+    </marker>
+  </defs>
+
+  <!-- 延長ループ -->
+  <path d="M185,42 C185,10 235,10 235,42" class="arrow" marker-end="url(#ah3)"/>
+  <text x="210" y="12" text-anchor="middle" class="lbl">候補が続けば延長</text>
+
+  <!-- 候補 → 暫定 → 常設 -->
+  <rect x="10" y="44" width="104" height="56" rx="10" class="box"/>
+  <text x="62" y="68" text-anchor="middle" class="t">新テーマ候補</text>
+  <text x="62" y="87" text-anchor="middle" class="m">レポートに表示</text>
+  <line x1="114" y1="72" x2="156" y2="72" class="arrow" marker-end="url(#ah3)"/>
+  <text x="135" y="64" text-anchor="middle" class="lbl">条件</text>
+
+  <rect x="158" y="44" width="104" height="56" rx="10" class="box-strong"/>
+  <text x="210" y="68" text-anchor="middle" class="t">暫定テーマ</text>
+  <text x="210" y="87" text-anchor="middle" class="m">14日間 自動監視</text>
+  <line x1="262" y1="72" x2="304" y2="72" class="arrow" marker-end="url(#ah3)"/>
+  <text x="283" y="64" text-anchor="middle" class="lbl">adopt</text>
+
+  <rect x="306" y="44" width="104" height="56" rx="10" class="box"/>
+  <text x="358" y="68" text-anchor="middle" class="t">常設テーマ</text>
+  <text x="358" y="87" text-anchor="middle" class="m">期限なし</text>
+
+  <!-- 期限切れ -->
+  <line x1="210" y1="100" x2="210" y2="130" class="arrow" marker-end="url(#ah3)"/>
+  <text x="218" y="120" class="lbl">期限切れ</text>
+  <rect x="158" y="132" width="104" height="36" rx="10" class="box"/>
+  <text x="210" y="155" text-anchor="middle" class="s">監視から外れる</text>
+
+  <line x1="10" y1="186" x2="410" y2="186" stroke="currentColor" stroke-opacity=".12"/>
+
+  <!-- 既存テーマへの追加 -->
+  <rect x="10" y="202" width="104" height="50" rx="10" class="box"/>
+  <text x="62" y="223" text-anchor="middle" class="t">急騰銘柄</text>
+  <text x="62" y="241" text-anchor="middle" class="m">どこにも未登録</text>
+  <line x1="114" y1="227" x2="304" y2="227" class="arrow" marker-end="url(#ah3)"/>
+  <text x="209" y="219" text-anchor="middle" class="lbl">見出しに既存テーマの語が2本以上</text>
+  <rect x="306" y="202" width="104" height="50" rx="10" class="box-strong"/>
+  <text x="358" y="223" text-anchor="middle" class="t">既存テーマ</text>
+  <text x="358" y="241" text-anchor="middle" class="m">に銘柄を追加</text>
+</svg>
+<figcaption>
+暫定テーマになる条件は「関連銘柄が3つ以上、かつ（急騰が2銘柄以上 または ニュースが4件以上）」。
+条件に届かない候補はレポートに並ぶだけなので、気になるものは <code>--adopt</code> で直接常設にできます。
+</figcaption>
+</figure>
+
+<!-- ============ 操作 ============ -->
+<h2>4. 操作とファイル</h2>
+<p class="sub">手動実行はGitHubのActions画面からも可能（morning › Run workflow）</p>
+<table>
+  <tr><th>やりたいこと</th><th>方法</th></tr>
+  <tr><td>今すぐ朝の処理を実行</td><td><code>gh workflow run morning</code></td></tr>
+  <tr><td>候補を常設テーマにする</td><td><code>.venv/bin/python monitor.py --adopt 原発</code></td></tr>
+  <tr><td>追加テーマを外す</td><td><code>.venv/bin/python monitor.py --drop 原発</code></td></tr>
+  <tr><td>固定テーマ・銘柄を編集</td><td><code>themes.py</code></td></tr>
+  <tr><td>レポートを見る</td><td><a href="https://mamimusshu.github.io/theme-report/">mamimusshu.github.io/theme-report</a></td></tr>
+  <tr><td>実行ログ</td><td>GitHub › stock-theme-monitor › Actions</td></tr>
+  <tr><td>候補の採用などを反映</td><td>変更後に <code>git pull</code> → 編集 → <code>git push</code>（記録は毎朝クラウドがコミット）</td></tr>
+</table>
+
+</div></body></html>
